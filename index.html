@@ -69,14 +69,13 @@
     </style>
 </head>
 <body>
-    <div id="board-wrapper" class="board"><div id="loader">Syncing...</div></div>
+    <div id="board-wrapper" class="board"><div id="loader">Syncing with the jungle...</div></div>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRwBd4gNfZ40xVK17b3VrYS_7pJaoCmxwUuzSHQbsLBZsuCxUR8B8mEp4TlHxUNSb4k3mxVyuSx5frb/pub?gid=0&single=true&output=csv';
 
-        // MAGIC STEP: Converts Google's "Number" back into a real Date
         function formatGoogleDate(serial) {
-            if (isNaN(serial)) return serial; // If it's already text (like "June 12"), leave it alone
+            if (isNaN(serial) || serial === "") return serial;
             const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -84,12 +83,17 @@
             return `${day}/${month}/${year}`;
         }
 
+        // Updated "Space-Friendly" CSV Parser
         function parseCSV(text) {
             const rows = [];
-            const lines = text.split('\r\n');
+            const lines = text.split(/\r?\n/);
             for (let line of lines) {
-                const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-                if (values) rows.push(values.map(v => v.replace(/^"|"$/g, '')));
+                if (!line.trim()) continue;
+                // This regex splits ONLY on commas, but ignores commas inside quotes
+                const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
+                if (values) {
+                    rows.push(values.map(v => v.replace(/^"|"$/g, '').trim()));
+                }
             }
             return rows;
         }
@@ -100,7 +104,11 @@
                 const response = await fetch(csvUrl);
                 const data = await response.text();
                 const rows = parseCSV(data);
-                if (rows.length <= 1) { wrapper.innerHTML = "<div id='loader'>No treks found.</div>"; return; }
+                
+                if (rows.length <= 1) {
+                    wrapper.innerHTML = "<div id='loader'>No treks found.</div>";
+                    return;
+                }
 
                 wrapper.innerHTML = '';
                 for (let i = 1; i < rows.length; i++) {
@@ -109,8 +117,6 @@
                     
                     const paxCount = parseInt(cols[2]) || 0;
                     const occupancy = (paxCount / 6) * 100;
-                    
-                    // Use our new Date Formatter here
                     const displayDate = formatGoogleDate(cols[1]);
 
                     wrapper.innerHTML += `
