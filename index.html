@@ -3,22 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <style>
+        /* 1. BRAND FONTS */
         @font-face {
             font-family: 'Ancizar Serif';
             src: url('https://cdn.prod.website-files.com/68381b5b82dc409028f87015/6842d7855d5745ba2797cc5d_AncizarSerif-VariableFont_wght.ttf') format('truetype');
             font-weight: normal;
         }
 
-        @font-face {
-            font-family: 'Proxima Nova';
-            src: url('PASTE_PROXIMA_LINK_HERE') format('woff2');
-            font-weight: normal;
-        }
-
+        /* Using Inter as the fallback for Proxima Nova until the Proxima link is swapped */
         body { 
             margin: 0; padding: 0; background: transparent; 
             color: white; -webkit-font-smoothing: antialiased;
-            font-family: 'Proxima Nova', sans-serif; 
+            font-family: 'Inter', 'Helvetica Neue', sans-serif; 
         }
 
         .board { 
@@ -51,13 +47,10 @@
             color: #999; font-size: 17px; margin-bottom: 24px; font-style: italic;
         }
 
-        .progress-bar { background: #252525; height: 6px; border-radius: 10px; overflow: hidden; margin-top: auto; }
-        .progress-fill { background: #EE6D2B; height: 100%; }
-        .spots-text { font-size: 11px; color: #666; margin: 10px 0 24px 0; font-weight: 800; text-transform: uppercase; }
-
         .dna-grid { 
             background: rgba(255,255,255,0.02); padding: 20px; border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 12px;
+            margin-bottom: 24px;
         }
 
         .dna-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 8px; }
@@ -65,14 +58,42 @@
         .dna-label { color: #444; font-size: 9px; font-weight: 800; text-transform: uppercase; }
         .dna-value { color: #ddd; font-size: 14px; }
 
-        #loader { text-align: center; color: #222; font-size: 12px; padding: 60px; }
+        /* THE JOIN BUTTON */
+        .join-btn {
+            background: #EE6D2B;
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            margin-top: auto;
+        }
+
+        .join-btn:hover { background: #ff8c4d; }
+        
+        /* FULL STATE */
+        .btn-full { background: #252525; color: #555; cursor: not-allowed; pointer-events: none; }
+
+        .progress-bar { background: #252525; height: 6px; border-radius: 10px; overflow: hidden; margin-top: 20px; }
+        .progress-fill { background: #EE6D2B; height: 100%; }
+        .spots-text { font-size: 11px; color: #666; margin: 8px 0 20px 0; font-weight: 800; text-transform: uppercase; }
+
+        #loader { text-align: center; color: #444; font-size: 12px; padding: 60px; }
     </style>
 </head>
 <body>
-    <div id="board-wrapper" class="board"><div id="loader">Syncing with the jungle...</div></div>
+    <div id="board-wrapper" class="board"><div id="loader">Syncing jungle treks...</div></div>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRwBd4gNfZ40xVK17b3VrYS_7pJaoCmxwUuzSHQbsLBZsuCxUR8B8mEp4TlHxUNSb4k3mxVyuSx5frb/pub?gid=0&single=true&output=csv';
+        
+        // YOUR WHATSAPP NUMBER
+        const whatsappNumber = "6282125680799"; 
 
         function formatGoogleDate(serial) {
             if (isNaN(serial) || serial === "") return serial;
@@ -83,17 +104,13 @@
             return `${day}/${month}/${year}`;
         }
 
-        // Updated "Space-Friendly" CSV Parser
         function parseCSV(text) {
             const rows = [];
             const lines = text.split(/\r?\n/);
             for (let line of lines) {
                 if (!line.trim()) continue;
-                // This regex splits ONLY on commas, but ignores commas inside quotes
                 const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g);
-                if (values) {
-                    rows.push(values.map(v => v.replace(/^"|"$/g, '').trim()));
-                }
+                if (values) rows.push(values.map(v => v.replace(/^"|"$/g, '').trim()));
             }
             return rows;
         }
@@ -105,32 +122,38 @@
                 const data = await response.text();
                 const rows = parseCSV(data);
                 
-                if (rows.length <= 1) {
-                    wrapper.innerHTML = "<div id='loader'>No treks found.</div>";
-                    return;
-                }
-
                 wrapper.innerHTML = '';
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i];
                     if (cols.length < 6 || !cols[0]) continue;
                     
+                    const status = cols[6] || 'Gathering';
+                    const isFull = status.toLowerCase() === 'full';
                     const paxCount = parseInt(cols[2]) || 0;
-                    const occupancy = (paxCount / 6) * 100;
+                    const occupancy = Math.min((paxCount / 6) * 100, 100);
                     const displayDate = formatGoogleDate(cols[1]);
+
+                    const message = encodeURIComponent(`Hi Sumatra Trekkers! I'm interested in joining the ${cols[0]} trek on ${displayDate}. Are there still spots available?`);
+                    const waLink = `https://wa.me/${whatsappNumber}?text=${message}`;
 
                     wrapper.innerHTML += `
                         <div class="card">
-                            <div class="status-row"><div class="status">${cols[6] || 'Gathering'}</div></div>
+                            <div class="status-row"><div class="status">${status}</div></div>
                             <div class="trek-title">${cols[0]}</div>
                             <div class="date">${displayDate}</div>
-                            <div class="progress-bar"><div class="progress-fill" style="width: ${occupancy}%"></div></div>
-                            <div class="spots-text">${paxCount} / 6 SPOTS FILLED</div>
+                            
                             <div class="dna-grid">
                                 <div class="dna-item"><span class="dna-label">CREW</span><span class="dna-value">${cols[3]}</span></div>
                                 <div class="dna-item"><span class="dna-label">AGES</span><span class="dna-value">${cols[4]}</span></div>
                                 <div class="dna-item"><span class="dna-label">FITNESS</span><span class="dna-value">${cols[5]} / 4</span></div>
                             </div>
+
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${occupancy}%"></div></div>
+                            <div class="spots-text">${paxCount} / 6 SPOTS FILLED</div>
+
+                            <a href="${waLink}" target="_blank" class="join-btn ${isFull ? 'btn-full' : ''}">
+                                ${isFull ? 'Group Full' : 'Join this Group'}
+                            </a>
                         </div>
                     `;
                 }
