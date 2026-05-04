@@ -3,20 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        /* 1. ANCIZAR SERIF IS NOW LIVE */
         @font-face {
             font-family: 'Ancizar Serif';
             src: url('https://cdn.prod.website-files.com/68381b5b82dc409028f87015/6842d7855d5745ba2797cc5d_AncizarSerif-VariableFont_wght.ttf') format('truetype');
             font-weight: normal;
-            font-style: normal;
         }
 
-        /* 2. PLACEHOLDER FOR PROXIMA NOVA */
         @font-face {
             font-family: 'Proxima Nova';
             src: url('PASTE_PROXIMA_LINK_HERE') format('woff2');
             font-weight: normal;
-            font-style: normal;
         }
 
         body { 
@@ -39,6 +35,12 @@
 
         .card:hover { border-color: #EE6D2B; transform: translateY(-5px); }
 
+        .status { 
+            color: #EE6D2B; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+            font-size: 10px; margin-bottom: 16px; display: inline-block;
+            background: rgba(238, 109, 43, 0.1); padding: 6px 12px; border-radius: 4px;
+        }
+
         .trek-title { 
             font-family: 'Ancizar Serif', serif;
             margin: 0 0 6px 0; font-size: 32px; line-height: 1.1; font-weight: 400;
@@ -49,17 +51,9 @@
             color: #999; font-size: 17px; margin-bottom: 24px; font-style: italic;
         }
 
-        .status { 
-            font-family: 'Proxima Nova', sans-serif;
-            color: #EE6D2B; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
-            font-size: 10px; margin-bottom: 16px;
-            display: inline-block; background: rgba(238, 109, 43, 0.1);
-            padding: 6px 12px; border-radius: 4px; border: 1px solid rgba(238, 109, 43, 0.2);
-        }
-
         .progress-bar { background: #252525; height: 6px; border-radius: 10px; overflow: hidden; margin-top: auto; }
         .progress-fill { background: #EE6D2B; height: 100%; }
-        .spots-text { font-family: 'Proxima Nova', sans-serif; font-size: 11px; color: #666; margin: 10px 0 24px 0; font-weight: 800; text-transform: uppercase; }
+        .spots-text { font-size: 11px; color: #666; margin: 10px 0 24px 0; font-weight: 800; text-transform: uppercase; }
 
         .dna-grid { 
             background: rgba(255,255,255,0.02); padding: 20px; border-radius: 10px;
@@ -68,10 +62,10 @@
 
         .dna-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 8px; }
         .dna-item:last-child { border: none; padding: 0; }
-        .dna-label { font-family: 'Proxima Nova', sans-serif; color: #444; font-size: 9px; font-weight: 800; text-transform: uppercase; }
-        .dna-value { color: #ddd; font-size: 14px; font-family: 'Proxima Nova', sans-serif; }
+        .dna-label { color: #444; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .dna-value { color: #ddd; font-size: 14px; }
 
-        #loader { text-align: center; color: #222; font-size: 12px; padding: 60px; font-family: 'Proxima Nova', sans-serif; }
+        #loader { text-align: center; color: #222; font-size: 12px; padding: 60px; }
     </style>
 </head>
 <body>
@@ -79,6 +73,16 @@
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRwBd4gNfZ40xVK17b3VrYS_7pJaoCmxwUuzSHQbsLBZsuCxUR8B8mEp4TlHxUNSb4k3mxVyuSx5frb/pub?gid=0&single=true&output=csv';
+
+        // MAGIC STEP: Converts Google's "Number" back into a real Date
+        function formatGoogleDate(serial) {
+            if (isNaN(serial)) return serial; // If it's already text (like "June 12"), leave it alone
+            const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = String(date.getFullYear()).slice(-2);
+            return `${day}/${month}/${year}`;
+        }
 
         function parseCSV(text) {
             const rows = [];
@@ -102,14 +106,18 @@
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i];
                     if (cols.length < 6 || !cols[0]) continue;
+                    
                     const paxCount = parseInt(cols[2]) || 0;
                     const occupancy = (paxCount / 6) * 100;
+                    
+                    // Use our new Date Formatter here
+                    const displayDate = formatGoogleDate(cols[1]);
 
                     wrapper.innerHTML += `
                         <div class="card">
                             <div class="status-row"><div class="status">${cols[6] || 'Gathering'}</div></div>
                             <div class="trek-title">${cols[0]}</div>
-                            <div class="date">${cols[1]}</div>
+                            <div class="date">${displayDate}</div>
                             <div class="progress-bar"><div class="progress-fill" style="width: ${occupancy}%"></div></div>
                             <div class="spots-text">${paxCount} / 6 SPOTS FILLED</div>
                             <div class="dna-grid">
