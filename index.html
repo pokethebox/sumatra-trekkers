@@ -3,33 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { margin: 0; padding: 0; background: transparent; font-family: sans-serif; color: white; }
-        .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; }
-        .card { background: #1a1a1a; padding: 24px; border-radius: 12px; border: 1px solid #333; }
-        .status { color: #EE6D2B; font-weight: bold; text-transform: uppercase; font-size: 11px; margin-bottom: 10px; }
-        .trek-title { margin: 8px 0; font-size: 20px; }
-        .date { color: #888; font-size: 14px; margin-bottom: 16px; }
-        .progress-container { margin: 16px 0; }
-        .progress-bar { background: #333; height: 8px; border-radius: 4px; overflow: hidden; }
+        /* 1. ANCIZAR SERIF IS NOW LIVE */
+        @font-face {
+            font-family: 'Ancizar Serif';
+            src: url('https://cdn.prod.website-files.com/68381b5b82dc409028f87015/6842d7855d5745ba2797cc5d_AncizarSerif-VariableFont_wght.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        /* 2. PLACEHOLDER FOR PROXIMA NOVA */
+        @font-face {
+            font-family: 'Proxima Nova';
+            src: url('PASTE_PROXIMA_LINK_HERE') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        body { 
+            margin: 0; padding: 0; background: transparent; 
+            color: white; -webkit-font-smoothing: antialiased;
+            font-family: 'Proxima Nova', sans-serif; 
+        }
+
+        .board { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
+            gap: 24px; width: 100%; 
+        }
+
+        .card { 
+            background: #141414; padding: 32px; border-radius: 16px; 
+            border: 1px solid #2a2a2a; transition: all 0.4s ease;
+            display: flex; flex-direction: column;
+        }
+
+        .card:hover { border-color: #EE6D2B; transform: translateY(-5px); }
+
+        .trek-title { 
+            font-family: 'Ancizar Serif', serif;
+            margin: 0 0 6px 0; font-size: 32px; line-height: 1.1; font-weight: 400;
+        }
+
+        .date { 
+            font-family: 'Ancizar Serif', serif;
+            color: #999; font-size: 17px; margin-bottom: 24px; font-style: italic;
+        }
+
+        .status { 
+            font-family: 'Proxima Nova', sans-serif;
+            color: #EE6D2B; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+            font-size: 10px; margin-bottom: 16px;
+            display: inline-block; background: rgba(238, 109, 43, 0.1);
+            padding: 6px 12px; border-radius: 4px; border: 1px solid rgba(238, 109, 43, 0.2);
+        }
+
+        .progress-bar { background: #252525; height: 6px; border-radius: 10px; overflow: hidden; margin-top: auto; }
         .progress-fill { background: #EE6D2B; height: 100%; }
-        .dna { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 13px; border-left: 3px solid #EE6D2B; }
-        #debug-msg { color: #555; font-size: 10px; margin-bottom: 10px; }
+        .spots-text { font-family: 'Proxima Nova', sans-serif; font-size: 11px; color: #666; margin: 10px 0 24px 0; font-weight: 800; text-transform: uppercase; }
+
+        .dna-grid { 
+            background: rgba(255,255,255,0.02); padding: 20px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 12px;
+        }
+
+        .dna-item { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.04); padding-bottom: 8px; }
+        .dna-item:last-child { border: none; padding: 0; }
+        .dna-label { font-family: 'Proxima Nova', sans-serif; color: #444; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+        .dna-value { color: #ddd; font-size: 14px; font-family: 'Proxima Nova', sans-serif; }
+
+        #loader { text-align: center; color: #222; font-size: 12px; padding: 60px; font-family: 'Proxima Nova', sans-serif; }
     </style>
 </head>
 <body>
-
-    <div id="debug-msg">Initializing board...</div>
-    <div id="board-wrapper" class="board"></div>
+    <div id="board-wrapper" class="board"><div id="loader">Syncing...</div></div>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRwBd4gNfZ40xVK17b3VrYS_7pJaoCmxwUuzSHQbsLBZsuCxUR8B8mEp4TlHxUNSb4k3mxVyuSx5frb/pub?gid=0&single=true&output=csv';
 
-        // A much simpler splitter that is harder to break
         function parseCSV(text) {
             const rows = [];
-            const lines = text.split('\r\n'); // Split by new line
+            const lines = text.split('\r\n');
             for (let line of lines) {
-                // This regex handles commas inside quotes correctly
                 const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (values) rows.push(values.map(v => v.replace(/^"|"$/g, '')));
             }
@@ -37,53 +91,37 @@
         }
 
         async function loadBoard() {
-            const debug = document.getElementById('debug-msg');
             const wrapper = document.getElementById('board-wrapper');
-            
             try {
                 const response = await fetch(csvUrl);
                 const data = await response.text();
-                
                 const rows = parseCSV(data);
-                debug.innerHTML = `Found ${rows.length - 1} expeditions in Google Sheets.`;
-
-                if (rows.length <= 1) {
-                    wrapper.innerHTML = "No expeditions found. Add a row to your Google Sheet!";
-                    return;
-                }
+                if (rows.length <= 1) { wrapper.innerHTML = "<div id='loader'>No treks found.</div>"; return; }
 
                 wrapper.innerHTML = '';
-                // Skip the header (row 0) and loop through data
                 for (let i = 1; i < rows.length; i++) {
                     const cols = rows[i];
-                    if (cols.length < 6) continue;
-
+                    if (cols.length < 6 || !cols[0]) continue;
                     const paxCount = parseInt(cols[2]) || 0;
                     const occupancy = (paxCount / 6) * 100;
 
                     wrapper.innerHTML += `
                         <div class="card">
-                            <div class="status">${cols[6] || 'Gathering'}</div>
-                            <div class="trek-title"><strong>${cols[0]}</strong></div>
-                            <div class="date">📅 ${cols[1]}</div>
-                            <div class="progress-container">
-                                <div class="progress-bar"><div class="progress-fill" style="width: ${occupancy}%"></div></div>
-                                <p style="font-size:12px; margin-top:5px;">${paxCount}/6 Spots</p>
-                            </div>
-                            <div class="dna">
-                                <strong>Crew:</strong> ${cols[3]}<br>
-                                <strong>Ages:</strong> ${cols[4]}<br>
-                                <strong>Fitness:</strong> ${cols[5]}/4
+                            <div class="status-row"><div class="status">${cols[6] || 'Gathering'}</div></div>
+                            <div class="trek-title">${cols[0]}</div>
+                            <div class="date">${cols[1]}</div>
+                            <div class="progress-bar"><div class="progress-fill" style="width: ${occupancy}%"></div></div>
+                            <div class="spots-text">${paxCount} / 6 SPOTS FILLED</div>
+                            <div class="dna-grid">
+                                <div class="dna-item"><span class="dna-label">CREW</span><span class="dna-value">${cols[3]}</span></div>
+                                <div class="dna-item"><span class="dna-label">AGES</span><span class="dna-value">${cols[4]}</span></div>
+                                <div class="dna-item"><span class="dna-label">FITNESS</span><span class="dna-value">${cols[5]} / 4</span></div>
                             </div>
                         </div>
                     `;
                 }
-            } catch (err) {
-                debug.innerHTML = "Error: Could not connect to Google Sheets.";
-                console.error(err);
-            }
+            } catch (err) { wrapper.innerHTML = "<div id='loader'>Connection Lost</div>"; }
         }
-
         loadBoard();
     </script>
 </body>
