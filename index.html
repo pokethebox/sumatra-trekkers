@@ -7,4 +7,87 @@
     <h1>Sumatra Trekkers: Solo-Sync Board</h1>
     <p>Jungle tribe matching in progress...</p>
 </body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sumatra Trekkers Solo-Sync</title>
+    <style>
+        body { background: #073926; color: white; font-family: sans-serif; padding: 40px; line-height: 1.6; }
+        h1 { text-align: center; margin-bottom: 40px; }
+        .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: #1a1a1a; padding: 25px; border-radius: 15px; border: 1px solid #333; position: relative; }
+        .status { color: #EE6D2B; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; margin-bottom: 10px; }
+        .trek-title { margin: 10px 0; font-size: 22px; }
+        .date { color: #aaa; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .progress-container { margin: 20px 0; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
+        .progress-bar { background: #333; height: 12px; border-radius: 6px; overflow: hidden; }
+        .progress-fill { background: #EE6D2B; height: 100%; transition: width 0.8s ease-out; }
+        .dna { background: #073926; padding: 10px; border-radius: 8px; font-size: 13px; color: #ccc; }
+    </style>
+</head>
+<body>
+
+    <h1>Live Expedition Board</h1>
+    <div id="board-wrapper" class="board">Jungle tribe data loading...</div>
+
+    <script>
+        // Your specific Google Sheet CSV URL
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRwBd4gNfZ40xVK17b3VrYS_7pJaoCmxwUuzSHQbsLBZsuCxUR8B8mEp4TlHxUNSb4k3mxVyuSx5frb/pub?gid=0&single=true&output=csv';
+
+        async function loadBoard() {
+            try {
+                const response = await fetch(csvUrl);
+                const data = await response.text();
+                
+                // This splits the sheet into rows
+                const rows = data.split('\n').slice(1); 
+                const wrapper = document.getElementById('board-wrapper');
+                wrapper.innerHTML = '';
+
+                rows.forEach(row => {
+                    // This splits each row into columns
+                    // Note: If your data has commas in it, we might need a smarter split later
+                    const cols = row.split(',');
+                    if (cols.length < 6) return;
+                    
+                    const paxCount = parseInt(cols[2]) || 0;
+                    const occupancy = (paxCount / 6) * 100;
+                    
+                    wrapper.innerHTML += `
+                        <div class="card">
+                            <div class="status">${cols[6] || 'Gathering'}</div>
+                            <h3 class="trek-title">${cols[0]}</h3>
+                            <div class="date">📅 ${cols[1]}</div>
+                            
+                            <div class="progress-container">
+                                <div class="progress-label">
+                                    <span>${paxCount}/6 Spots Taken</span>
+                                    <span>${Math.round(occupancy)}%</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${occupancy}%"></div>
+                                </div>
+                            </div>
+
+                            <div class="dna">
+                                <strong>Crew DNA:</strong><br>
+                                Flags: ${cols[3]}<br>
+                                Ages: ${cols[4]}<br>
+                                Fitness Level: ${cols[5]}/4
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error("Error loading board:", error);
+                document.getElementById('board-wrapper').innerHTML = "Could not load the jungle board. Check your Google Sheet publishing settings!";
+            }
+        }
+
+        // Run the function when the page opens
+        loadBoard();
+    </script>
+</body>
 </html>
