@@ -1,51 +1,75 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { margin: 0; padding: 0; background: transparent; font-family: sans-serif; color: white; }
+        .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; }
+        .card { background: #1a1a1a; padding: 24px; border-radius: 12px; border: 1px solid #333; }
+        .status { color: #EE6D2B; font-weight: bold; text-transform: uppercase; font-size: 11px; margin-bottom: 10px; }
+        .trek-title { margin: 8px 0; font-size: 20px; }
+        .date { color: #888; font-size: 14px; margin-bottom: 16px; }
+        .progress-container { margin: 16px 0; }
+        .progress-bar { background: #333; height: 8px; border-radius: 4px; overflow: hidden; }
+        .progress-fill { background: #EE6D2B; height: 100%; }
+        .dna { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; font-size: 13px; border-left: 3px solid #EE6D2B; }
+        #debug-msg { color: #555; font-size: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="debug-msg">Initializing board...</div>
+    <div id="board-wrapper" class="board"></div>
+
+    <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRwBd4gNfZ40xVK17b3VrYS_7pJaoCmxwUuzSHQbsLBZsuCxUR8B8mEp4TlHxUNSb4k3mxVyuSx5frb/pub?gid=0&single=true&output=csv';
 
-        // This is a "Smart Splitter" that ignores commas inside quotes
-        function csvToArray(text) {
-            let p = '', Array = [[]], f = 0, r = 0;
-            text.split('').forEach(c => {
-                if (c === '"') f = !f;
-                else if (c === ',' && !f) c = Array[r][++p] = '';
-                else if (c === '\n' && !f) Array[++r] = [p = ''];
-                else Array[r][p] += c;
-            });
-            return Array;
+        // A much simpler splitter that is harder to break
+        function parseCSV(text) {
+            const rows = [];
+            const lines = text.split('\r\n'); // Split by new line
+            for (let line of lines) {
+                // This regex handles commas inside quotes correctly
+                const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if (values) rows.push(values.map(v => v.replace(/^"|"$/g, '')));
+            }
+            return rows;
         }
 
         async function loadBoard() {
+            const debug = document.getElementById('debug-msg');
+            const wrapper = document.getElementById('board-wrapper');
+            
             try {
                 const response = await fetch(csvUrl);
                 const data = await response.text();
                 
-                // Use the new Smart Splitter
-                const rows = csvToArray(data).slice(1); 
-                const wrapper = document.getElementById('board-wrapper');
-                wrapper.innerHTML = '';
+                const rows = parseCSV(data);
+                debug.innerHTML = `Found ${rows.length - 1} expeditions in Google Sheets.`;
 
-                rows.forEach(cols => {
-                    // Check if row is empty
-                    if (cols.length < 6 || !cols[0]) return;
-                    
+                if (rows.length <= 1) {
+                    wrapper.innerHTML = "No expeditions found. Add a row to your Google Sheet!";
+                    return;
+                }
+
+                wrapper.innerHTML = '';
+                // Skip the header (row 0) and loop through data
+                for (let i = 1; i < rows.length; i++) {
+                    const cols = rows[i];
+                    if (cols.length < 6) continue;
+
                     const paxCount = parseInt(cols[2]) || 0;
                     const occupancy = (paxCount / 6) * 100;
-                    
+
                     wrapper.innerHTML += `
                         <div class="card">
                             <div class="status">${cols[6] || 'Gathering'}</div>
                             <div class="trek-title"><strong>${cols[0]}</strong></div>
                             <div class="date">📅 ${cols[1]}</div>
-                            
                             <div class="progress-container">
-                                <div class="progress-label">
-                                    <span>${paxCount}/6 Spots</span>
-                                    <span>${Math.round(occupancy)}% Full</span>
-                                </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: ${occupancy}%"></div>
-                                </div>
+                                <div class="progress-bar"><div class="progress-fill" style="width: ${occupancy}%"></div></div>
+                                <p style="font-size:12px; margin-top:5px;">${paxCount}/6 Spots</p>
                             </div>
-
                             <div class="dna">
                                 <strong>Crew:</strong> ${cols[3]}<br>
                                 <strong>Ages:</strong> ${cols[4]}<br>
@@ -53,9 +77,14 @@
                             </div>
                         </div>
                     `;
-                });
-            } catch (e) { console.error(e); }
+                }
+            } catch (err) {
+                debug.innerHTML = "Error: Could not connect to Google Sheets.";
+                console.error(err);
+            }
         }
+
         loadBoard();
     </script>
-    
+</body>
+</html>
